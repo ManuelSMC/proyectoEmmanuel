@@ -1,3 +1,3 @@
 idf_component_register(SRCS "hello_world_main.c"
-                       PRIV_REQUIRES spi_flash
-                       INCLUDE_DIRS "")
+                       INCLUDE_DIRS "."
+                       REQUIRES  esp_wifi esp_event esp_netif nvs_flash driver esp_system esp_http_client mqtt esp-tls)
