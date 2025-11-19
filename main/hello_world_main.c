@@ -18,15 +18,15 @@
 #include "esp_crt_bundle.h"   // Para esp_crt_bundle_attach en TLS
 
 // ------------ CONFIGURACIÓN ------------
-#define WIFI_SSID "Manuel"
-#define WIFI_PASS "12345678"
+#define WIFI_SSID "POCO M5s"
+#define WIFI_PASS "Hola.123"
 
 #define SERVER_URL "https://proyecto-esp.vercel.app/api/datos"
 
-#define MQTT_URI  "mqtts://g5f7ea80.ala.us-east-1.emqxsl.com:8883"
-#define MQTT_USER "Manuel"
-#define MQTT_PASS "Hola.123"
-#define MQTT_TOPIC "Manuel"
+#define MQTT_URI  "mqtts://lf16090b.ala.us-east-1.emqxsl.com:8883"
+#define MQTT_USER "manuel"
+#define MQTT_PASS "1234"
+#define MQTT_TOPIC "manuel"
 
 #define DHT_GPIO 21
 static const char *TAG = "DHT22_MQTT_HTTP";
@@ -260,6 +260,7 @@ void app_main(void) {
             ESP_LOGE(TAG, "Error leyendo DHT22");
         }
 
-        vTaskDelay(pdMS_TO_TICKS(3000));  // 3 segundos
+        // vTaskDelay(pdMS_TO_TICKS(3000));
+        vTaskDelay(pdMS_TO_TICKS(180000));
     }
 }
