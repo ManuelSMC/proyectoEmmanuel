@@ -22,6 +22,7 @@
 #define WIFI_PASS "Hola.123"
 
 #define SERVER_URL "https://proyecto-esp.vercel.app/api/datos"
+#define UPDATE_URL "https://proyecto-esp.vercel.app/api/update"
 
 #define MQTT_URI  "mqtts://lf16090b.ala.us-east-1.emqxsl.com:8883"
 #define MQTT_USER "manuel"
@@ -208,6 +209,61 @@ bool send_http_post(const char* json_payload) {
     }
 }
 
+// ------------ HTTP GET intervalo aleatorio ------------
+int fetch_interval_seconds(void) {
+    int interval = 15; // fallback
+    char resp_buf[128] = {0};
+
+    esp_http_client_config_t cfg = {
+        .url = UPDATE_URL,
+        .method = HTTP_METHOD_GET,
+        .event_handler = _http_event_handler,
+        .timeout_ms = 10000,
+        .use_global_ca_store = true,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+    };
+    esp_http_client_handle_t http = esp_http_client_init(&cfg);
+
+    if (http == NULL) {
+        ESP_LOGE(TAG, "No se pudo crear cliente HTTP");
+        return interval;
+    }
+
+    // Realizar petición
+    esp_err_t err = esp_http_client_open(http, 0);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "HTTP open fallo: %s", esp_err_to_name(err));
+        esp_http_client_cleanup(http);
+        return interval;
+    }
+
+    int content_length = esp_http_client_fetch_headers(http);
+    int read_len = esp_http_client_read(http, resp_buf, sizeof(resp_buf)-1);
+    esp_http_client_close(http);
+    esp_http_client_cleanup(http);
+
+    if (read_len > 0) {
+        resp_buf[read_len] = '\0';
+        ESP_LOGI(TAG, "Respuesta update: %s", resp_buf);
+        // respuesta esperada: {"intervalSeconds": 42}
+        const char *key = "intervalSeconds";
+        char *pos = strstr(resp_buf, key);
+        if (pos) {
+            pos = strchr(pos, ':');
+            if (pos) {
+                pos++; // avanzar a número
+                while (*pos == ' ' || *pos == '"') pos++;
+                int val = atoi(pos);
+                if (val >= 4 && val <= 60) interval = val;
+            }
+        }
+    } else {
+        ESP_LOGW(TAG, "Sin datos en respuesta de update");
+    }
+
+    return interval;
+}
+
 // ------------ MAIN ------------
 void app_main(void) {
     ESP_ERROR_CHECK(nvs_flash_init());
@@ -226,7 +282,7 @@ void app_main(void) {
         vTaskDelay(pdMS_TO_TICKS(2000));
     } while (1);
 
-    ESP_LOGI(TAG, "Sistema iniciado. Enviando a MQTT y HTTP cada 3 min...");
+    ESP_LOGI(TAG, "Sistema iniciado. Envío según intervalo aleatorio del backend...");
 
     int temp = 0, hum = 0;
     char json_payload[256];
@@ -260,7 +316,9 @@ void app_main(void) {
             ESP_LOGE(TAG, "Error leyendo DHT22");
         }
 
-        // vTaskDelay(pdMS_TO_TICKS(3000));
-        vTaskDelay(pdMS_TO_TICKS(180000));
+        // Consultar nuevo intervalo tras cada envío
+        int intervalSeconds = fetch_interval_seconds();
+        ESP_LOGI(TAG, "Próximo envío en %d segundos", intervalSeconds);
+        vTaskDelay(pdMS_TO_TICKS(intervalSeconds * 1000));
     }
 }
